@@ -16,7 +16,7 @@ Three files: `index.html` (layout + element IDs), `style.css`, and `game.js` (al
 
 `game.js` is built around module-level mutable state (`board`, `current`, `next`, `score`, `lines`, `level`, `paused`, `gameOver`, `dropInterval`, `animId`, ...) declared in a single `let` and reset by `init()`. Key points:
 
-- `board` is a `ROWS x COLS` grid of integers: `0` = empty, `1–7` = piece type. The same integer indexes `COLORS` and `PIECES`, so adding/changing a piece means updating both arrays in sync (and the `Math.random() * 7` in `randomPiece`).
+- `board` is a `ROWS x COLS` grid of integers: `0` = empty, `1–8` = piece type (8 = the 3x3 hollow "tuerca" challenge piece). The same integer indexes `COLORS` and `PIECES`, so adding/changing a piece means updating both arrays in sync (`randomPiece` uses `PIECES.length - 1`, so it follows automatically).
 - Pieces are `{type, shape, x, y}`; rotation replaces `shape` with a rotated matrix (`rotateCW`) and `tryRotate` applies simple horizontal wall kicks `[0,-1,1,-2,2]`.
 - Game flow: `requestAnimationFrame` `loop` accumulates `dropAccum` and gravity-drops when it exceeds `dropInterval`; locking goes `lockPiece` → `merge` → `clearLines` (updates score/level/speed) → `spawn` (calls `endGame` if the new piece collides).
 - Pause/game-over cancel the animation frame; `togglePause` restarts `loop`, and `init` (Restart button) resets everything. The overlay element is reused for both PAUSA and GAME OVER.
