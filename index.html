@@ -11,7 +11,10 @@
     <h1 class="game-title">TETRIS</h1>
     <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Cambiar a modo claro" aria-pressed="false" title="Cambiar tema">🌙</button>
     <div class="game-container">
-      <canvas id="board" width="300" height="600"></canvas>
+      <div id="board-wrap" class="board-wrap">
+        <canvas id="board" width="300" height="600"></canvas>
+        <div id="fx-layer" class="fx-layer" aria-hidden="true"></div>
+      </div>
 
       <aside class="panel">
         <div class="panel-section">
@@ -54,6 +57,9 @@
     </div>
   </div>
 
+  <script src="scoreManager.js"></script>
+  <script src="soundEffects.js"></script>
+  <script src="visualEffects.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

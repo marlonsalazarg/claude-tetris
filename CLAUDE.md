@@ -12,7 +12,7 @@ Open `index.html` directly in a browser, or serve the directory (e.g. `python3 -
 
 ## Architecture
 
-Three files: `index.html` (layout + element IDs), `style.css`, and `game.js` (all logic, one script, no modules).
+`index.html` (layout + element IDs), `style.css`, and classic scripts loaded in this order (no modules, so `file://` keeps working): `scoreManager.js`, `soundEffects.js`, `visualEffects.js`, then `game.js` (main game logic).
 
 `game.js` is built around module-level mutable state (`board`, `current`, `next`, `score`, `lines`, `level`, `paused`, `gameOver`, `dropInterval`, `animId`, ...) declared in a single `let` and reset by `init()`. Key points:
 
@@ -21,6 +21,7 @@ Three files: `index.html` (layout + element IDs), `style.css`, and `game.js` (al
 - Game flow: `requestAnimationFrame` `loop` accumulates `dropAccum` and gravity-drops when it exceeds `dropInterval`; locking goes `lockPiece` → `merge` → `clearLines` (updates score/level/speed) → `spawn` (calls `endGame` if the new piece collides).
 - Pause/game-over cancel the animation frame; `togglePause` restarts `loop`, and `init` (Restart button) resets everything. The overlay element is reused for both PAUSA and GAME OVER.
 - Rendering: `draw()` redraws board, ghost piece (via `ghostY`), and current piece each frame; `drawNext()` renders the preview on a separate canvas and is called from `spawn`.
+- Scoring lives in `ScoreManager` (`scoreManager.js`, pure, no DOM; owns only `comboCount` and `isB2BActive`). `lockPiece` calls `ScoreManager.detectTSpin` *before* `merge` (needs the board without the T and the `lastActionWasRotation` flag, set by `tryRotate` and cleared by moves/drops/`spawn`), then `clearLines` (returns the cleared count, no longer scores), then `scoreManager.processTurn`, and adds `result.points` to `score`. `processTurn` calls the `onTurn` callback (`playTurnFeedback` in `game.js`), which drives `SoundEffects` (Web Audio, unlocked on first `keydown`) and `VisualEffects` (floating text in `#fx-layer`, shake on `#board-wrap`; CSS in the `Efectos` section of `style.css`). `init` resets the manager and clears effects.
 - Input is a single `keydown` handler (arrows, `X` rotate, `Space` hard drop, `P` pause).
 
-Scoring/levels: `LINE_SCORES` × level; soft drop +1/cell, hard drop +2/cell; level = `floor(lines/10)+1`; `dropInterval = max(100, 1000 - (level-1)*90)`.
+Scoring/levels: `CLEAR_SCORES` (in `scoreManager.js`) × level, plus T-Spin/combo/B2B ×1.5/Perfect Clear bonuses; soft drop +1/cell, hard drop +2/cell; level = `floor(lines/10)+1`; `dropInterval = max(100, 1000 - (level-1)*90)`.

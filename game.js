@@ -42,8 +42,6 @@ const SINGLE_TYPE = 12;
 // La 1x1 no está en el sorteo: solo sale como recompensa tras un Tetris.
 const PIECE_WEIGHTS = { 1: 13, 2: 13, 3: 13, 4: 13, 5: 13, 6: 13, 7: 13, 8: 2, 9: 4, 10: 4, 11: 3 };
 
-const LINE_SCORES = [0, 100, 300, 500, 800];
-
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
@@ -57,7 +55,15 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, rewardPending;
+let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, rewardPending, lastActionWasRotation;
+
+// Puntaje avanzado y efectos: viven en sus propios scripts (scoreManager.js, soundEffects.js, visualEffects.js)
+const scoreManager = new ScoreManager({ onTurn: playTurnFeedback });
+const sfx = new SoundEffects();
+const vfx = new VisualEffects({
+  layer: document.getElementById('fx-layer'),
+  target: document.getElementById('board-wrap'),
+});
 
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -124,6 +130,7 @@ function tryRotate() {
     if (!collide(rotated, current.x + kick, current.y)) {
       current.shape = rotated;
       current.x += kick;
+      lastActionWasRotation = true; // requisito del T-Spin
       return;
     }
   }
@@ -148,12 +155,12 @@ function clearLines() {
   }
   if (cleared) {
     lines += cleared;
-    score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
     if (cleared === 4) rewardPending = true;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
+  return cleared; // el puntaje lo calcula ScoreManager en lockPiece
 }
 
 function ghostY() {
@@ -164,6 +171,7 @@ function ghostY() {
 
 function hardDrop() {
   const gy = ghostY();
+  if (gy > current.y) lastActionWasRotation = false;
   score += (gy - current.y) * 2;
   current.y = gy;
   lockPiece();
@@ -172,6 +180,7 @@ function hardDrop() {
 function softDrop() {
   if (!collide(current.shape, current.x, current.y + 1)) {
     current.y++;
+    lastActionWasRotation = false;
     score += 1;
     updateHUD();
   } else {
@@ -180,15 +189,52 @@ function softDrop() {
 }
 
 function lockPiece() {
+  // T-Spin se evalúa antes de merge(): las esquinas se miran contra el tablero sin la T
+  const tSpin = ScoreManager.detectTSpin({
+    board, piece: current, lastActionWasRotation, rows: ROWS, cols: COLS,
+  });
+  const levelAtLock = level; // clearLines puede subir el nivel; el puntaje usa el previo
   merge();
-  clearLines();
+  const cleared = clearLines();
+  const result = scoreManager.processTurn({ linesCleared: cleared, level: levelAtLock, tSpin, board });
+  score += result.points;
+  updateHUD();
   spawn();
+}
+
+// Callback de ScoreManager: traduce el resultado del turno a sonido y efectos visuales
+function playTurnFeedback(result) {
+  const { linesCleared, tSpin, isPerfectClear, comboCount, labels } = result;
+  const isTSpin = tSpin !== 'none';
+
+  if (isPerfectClear) sfx.playPerfectClear();
+  else if (isTSpin) sfx.playTSpin();
+  else if (linesCleared === 4) sfx.playTetris();
+  else if (linesCleared > 0) sfx.playLineClear(comboCount);
+
+  // Combo por encima del sonido principal, para que se oiga la subida de tono
+  if (linesCleared > 0 && comboCount >= 1 && (isPerfectClear || isTSpin || linesCleared === 4)) {
+    sfx.playLineClear(comboCount);
+  }
+
+  labels.forEach((text, i) => {
+    const classes = [];
+    if (text.startsWith('COMBO')) classes.push('combo');
+    else if (text.includes('PERFECT')) classes.push('gold-glow', 'shake');
+    else if (text.includes('T-SPIN')) classes.push('tspin');
+    else classes.push('gold-glow');
+    vfx.showText(text, classes, i);
+  });
+
+  if (isPerfectClear) vfx.shake('strong');
+  else if (linesCleared === 4 || (isTSpin && linesCleared > 0)) vfx.shake();
 }
 
 function spawn() {
   current = next;
   next = randomPiece(rewardPending ? SINGLE_TYPE : undefined);
   rewardPending = false;
+  lastActionWasRotation = false; // cada pieza nueva empieza sin rotación previa
   if (collide(current.shape, current.x, current.y)) {
     endGame();
   }
@@ -293,6 +339,7 @@ function loop(ts) {
     dropAccum = 0;
     if (!collide(current.shape, current.x, current.y + 1)) {
       current.y++;
+      lastActionWasRotation = false;
     } else {
       lockPiece();
     }
@@ -310,6 +357,9 @@ function init() {
   paused = false;
   gameOver = false;
   rewardPending = false;
+  lastActionWasRotation = false;
+  scoreManager.reset();
+  vfx.clear();
   dropInterval = 1000;
   dropAccum = 0;
   lastTime = performance.now();
@@ -322,14 +372,21 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  sfx.unlock(); // el AudioContext solo puede iniciarse tras un gesto del usuario
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
-      if (!collide(current.shape, current.x - 1, current.y)) current.x--;
+      if (!collide(current.shape, current.x - 1, current.y)) {
+        current.x--;
+        lastActionWasRotation = false;
+      }
       break;
     case 'ArrowRight':
-      if (!collide(current.shape, current.x + 1, current.y)) current.x++;
+      if (!collide(current.shape, current.x + 1, current.y)) {
+        current.x++;
+        lastActionWasRotation = false;
+      }
       break;
     case 'ArrowDown':
       softDrop();

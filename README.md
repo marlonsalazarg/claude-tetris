@@ -39,7 +39,8 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Soft drop** (bajada acelerada) y **hard drop** (caída instantánea).
 - **Pieza fantasma** (_ghost piece_): muestra dónde aterrizará la pieza actual.
 - **Vista previa** de la siguiente pieza.
-- **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
+- **Sistema de puntuación** de la Tetris Guideline (100 / 300 / 500 / 800 × nivel) con **combos**, **T-Spin** (Mini y regular), **Back-to-Back** (×1.5) y **Perfect Clear**.
+- **Feedback audiovisual**: sonidos sintetizados con Web Audio API, textos flotantes y _screen shake_ en las jugadas grandes.
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
 
@@ -114,9 +115,23 @@ Contiene toda la lógica del juego. A grandes rasgos:
 - **Wall kicks** (`tryRotate`): si la rotación choca, intenta desplazar la pieza ±1 y ±2 columnas antes de descartar el giro.
 - **Game loop** (`loop`): basado en `requestAnimationFrame`, acumula el tiempo transcurrido y baja la pieza una fila cuando se supera `dropInterval`.
 - **Limpieza de líneas** (`clearLines`): recorre el tablero de abajo hacia arriba; cada fila completa se elimina y se inserta una vacía en la cima.
-- **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
+- **Puntuación**: `lockPiece` detecta el T-Spin (`ScoreManager.detectTSpin`) y delega el cálculo en `ScoreManager.processTurn` (ver abajo); el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
+- **`lastActionWasRotation`**: bandera que se activa al rotar con éxito y se apaga con cualquier movimiento, caída o pieza nueva; es el requisito del T-Spin.
 - **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
 - **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
+
+### 4. `scoreManager.js`, `soundEffects.js`, `visualEffects.js`
+
+Scripts clásicos (sin ES modules, para que el juego siga abriéndose con `file://`) que se cargan antes de `game.js`.
+
+- **`ScoreManager`** (puro, sin DOM): guarda `comboCount` (empieza en `-1`) e `isB2BActive`. `processTurn({ linesCleared, level, tSpin, board })` devuelve `{ points, labels, comboCount, b2b, isPerfectClear, ... }` y llama al callback `onTurn`.
+  - **Base** (× nivel): 100 / 300 / 500 / 800; T-Spin 400 / 800 / 1200 / 1600; T-Spin Mini 100 / 200 / 400.
+  - **Combo**: `50 × comboCount × nivel`; un bloqueo sin líneas lo reinicia a `-1`.
+  - **B2B**: Tetris y T-Spin con líneas son "difíciles"; dos seguidos multiplican el valor base por 1.5. Una limpieza normal de 1–3 líneas rompe la racha.
+  - **Perfect Clear**: tablero vacío tras el colapso; 800 / 1200 / 1800 / 2000 (3200 para un Tetris con B2B) × nivel.
+  - **T-Spin** (`detectTSpin`): solo la T, tras una rotación, con ≥ 3 de sus 4 esquinas diagonales ocupadas (paredes y suelo cuentan). Es regular si están ocupadas las 2 esquinas frontales (las del lado al que apunta la T) y Mini si no.
+- **`SoundEffects`**: `AudioContext` creado en el primer `keydown`; tonos ascendentes por combo, diente de sierra distorsionado para T-Spin y arpegio + acorde para Perfect Clear.
+- **`VisualEffects`**: `showText` (clases `fade-up`, `shake`, `gold-glow`, `tspin`, `combo`) sobre la capa `#fx-layer` y `shake` sobre `#board-wrap`. Los estilos están en la sección `Efectos` de `style.css` y respetan `prefers-reduced-motion`.
 
 ### Flujo del juego
 
@@ -157,8 +172,11 @@ Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara
 ```
 03-tetris/
 ├── index.html      # Estructura del DOM y canvas
-├── style.css       # Estilos del juego (dark theme)
-├── game.js         # Toda la lógica del Tetris (~300 líneas)
+├── style.css       # Estilos del juego (dark theme) y efectos
+├── game.js         # Lógica del Tetris (tablero, piezas, bucle, input)
+├── scoreManager.js # Puntaje: combos, T-Spin, B2B, Perfect Clear
+├── soundEffects.js # Sonidos procedurales (Web Audio API)
+├── visualEffects.js# Textos flotantes y screen shake
 └── README.md
 ```
 
@@ -174,7 +192,7 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `ROWS`         | Filas del tablero                        | `20`                  |
 | `BLOCK`        | Tamaño en píxeles de cada celda          | `30`                  |
 | `COLORS`       | Paleta de colores por tipo de pieza      | 7 colores             |
-| `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
+| `CLEAR_SCORES` | Puntos por 1–4 líneas (en `scoreManager.js`) | `[0,100,300,500,800]` |
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
 
 > Si cambias `COLS`, `ROWS` o `BLOCK`, recuerda ajustar también `width` y `height` del `<canvas id="board">` en `index.html` para que coincida (`COLS × BLOCK` × `ROWS × BLOCK`).
