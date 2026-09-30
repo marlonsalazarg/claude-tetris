@@ -14,6 +14,10 @@ const COLORS = [
   '#7ba7f0', // J - pale blue
   '#ffb74d', // L - orange
   '#b0bec5', // N - nut (tuerca) steel gray
+  '#f06292', // + - pink
+  '#4db6ac', // U - teal
+  '#a1887f', // Y - brown
+  '#fff176', // 1x1 - single, light yellow
 ];
 
 const PIECES = [
@@ -26,7 +30,17 @@ const PIECES = [
   [[6,0,0],[6,6,6],[0,0,0]],                  // J
   [[0,0,7],[7,7,7],[0,0,0]],                  // L
   [[8,8,8],[8,0,8],[8,8,8]],                  // N (tuerca)
+  [[0,9,0],[9,9,9],[0,9,0]],                  // + (pentominó)
+  [[10,0,10],[10,10,10]],                     // U (pentominó)
+  [[0,11],[11,11],[0,11],[0,11]],             // Y (pentominó)
+  [[12]],                                      // 1x1 (recompensa tras Tetris)
 ];
+
+const SINGLE_TYPE = 12;
+
+// Pesos de aparición (%): las clásicas son frecuentes; las difíciles, más raras.
+// La 1x1 no está en el sorteo: solo sale como recompensa tras un Tetris.
+const PIECE_WEIGHTS = { 1: 13, 2: 13, 3: 13, 4: 13, 5: 13, 6: 13, 7: 13, 8: 2, 9: 4, 10: 4, 11: 3 };
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
@@ -43,7 +57,7 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggle = document.getElementById('theme-toggle');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, rewardPending;
 
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -66,8 +80,17 @@ function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
 
-function randomPiece() {
-  const type = Math.floor(Math.random() * (PIECES.length - 1)) + 1;
+function pickType() {
+  const entries = Object.entries(PIECE_WEIGHTS);
+  let roll = Math.random() * entries.reduce((sum, [, w]) => sum + w, 0);
+  for (const [type, w] of entries) {
+    roll -= w;
+    if (roll < 0) return Number(type);
+  }
+  return 1;
+}
+
+function randomPiece(type = pickType()) {
   const shape = PIECES[type].map(row => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
 }
@@ -127,6 +150,7 @@ function clearLines() {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
+    if (cleared === 4) rewardPending = true;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
   }
@@ -163,7 +187,8 @@ function lockPiece() {
 
 function spawn() {
   current = next;
-  next = randomPiece();
+  next = randomPiece(rewardPending ? SINGLE_TYPE : undefined);
+  rewardPending = false;
   if (collide(current.shape, current.x, current.y)) {
     endGame();
   }
@@ -284,6 +309,7 @@ function init() {
   level = 1;
   paused = false;
   gameOver = false;
+  rewardPending = false;
   dropInterval = 1000;
   dropAccum = 0;
   lastTime = performance.now();
