@@ -20,6 +20,7 @@
   --fx-gold: #ffd54f;
   --fx-tspin: #ba68c8;
   --fx-combo: #4dd0e1;
+  --record-hl: rgba(255, 213, 79, 0.2);
 }
 
 [data-theme="light"] {
@@ -44,6 +45,7 @@
   --fx-gold: #c77700;
   --fx-tspin: #7b1fa2;
   --fx-combo: #00838f;
+  --record-hl: rgba(199, 119, 0, 0.18);
 }
 
 [hidden] {
@@ -417,3 +419,103 @@ kbd {
   color: var(--text);
   border-color: var(--accent);
 }
+
+/* ---- Records ---- */
+#start-screen { z-index: 20; }
+
+#start-title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 6px;
+  color: var(--accent);
+}
+
+.records-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  max-width: 100%;
+}
+
+.records-box .rec-title {
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--label);
+  font-weight: 700;
+}
+
+.records-box .rec-msg {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.records-table {
+  border-collapse: collapse;
+  font-family: 'Courier New', Courier, monospace;
+  color: var(--text);
+}
+
+.records-table th {
+  font-size: 11px;
+  color: var(--label);
+  font-weight: 700;
+  padding: 2px 8px;
+  text-align: right;
+}
+
+.records-table td {
+  padding: 3px 8px;
+  text-align: right;
+}
+
+.records-table th:nth-child(2),
+.records-table td:nth-child(2) { text-align: left; }
+
+.records-table tr.highlight td {
+  background: var(--record-hl);
+  color: var(--fx-gold);
+  font-weight: 700;
+}
+
+.records-table td.empty { text-align: center; color: var(--muted); }
+
+.records-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.records-stats b { color: var(--accent); }
+
+.records-form {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.records-form input {
+  width: 130px;
+  background: var(--canvas-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.records-form input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+
+.overlay-box .records-form button,
+.overlay-box .records-box button { margin-top: 0; padding: 8px 14px; }
+
+.overlay-box button.danger-btn {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  font-size: 12px;
+}
+
+.overlay-box button.danger-btn:hover { background: transparent; color: var(--danger); filter: brightness(1.2); }
