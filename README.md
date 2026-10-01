@@ -17,6 +17,7 @@ Implementación del clásico **Tetris** en JavaScript vanilla, usando HTML5 Canv
     - [Opción 1: abrir el archivo directamente](#opción-1-abrir-el-archivo-directamente)
     - [Opción 2: servidor local (recomendado)](#opción-2-servidor-local-recomendado)
   - [Controles](#controles)
+  - [Modo Desafío](#modo-desafío)
   - [Cómo funciona](#cómo-funciona)
     - [1. `index.html`](#1-indexhtml)
     - [2. `style.css`](#2-stylecss)
@@ -83,9 +84,26 @@ Después abre `http://localhost:8000` en el navegador.
 | --------- | --------------------------------- |
 | `←` / `→` | Mover la pieza horizontalmente    |
 | `↑` o `X` | Rotar la pieza en sentido horario |
+| `Z`       | Rotar en sentido antihorario      |
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
 | `P`       | Pausar / reanudar                 |
+
+---
+
+## Modo Desafío
+
+El selector **MODO** del panel derecho cambia entre el modo clásico y cinco desafíos. Cada uno muestra en un panel a la izquierda su objetivo, progreso, tiempo y modificadores; al terminar aparece un overlay con **Siguiente desafío**, **Reintentar** y **Salir del desafío**.
+
+| # | Desafío | Objetivo | Modificadores |
+| - | ------- | -------- | ------------- |
+| 1 | Sprint de 40 líneas | 40 líneas en 120 s (si se agota el tiempo, pierdes) | — |
+| 2 | Basura ascendente | Sobrevivir 90 s | Cada 10 s sube una fila de basura con 1 hueco (aviso rojo los 3 s previos) |
+| 3 | Tablero pre-colocado | 10 líneas | Empiezas con el patrón `piramide` en el fondo |
+| 4 | Piezas invisibles | 10 líneas | Los bloques fijados no se dibujan, pero siguen en el tablero |
+| 5 | Rotación inversa | 15 líneas | Nivel inicial 6; `↑`/`X` giran a la izquierda y `Z` a la derecha |
+
+Para añadir un desafío basta con una entrada nueva en `CHALLENGES` (`challenges.js`) con su `goal`, `timeLimit` opcional y los `modifiers` que cambia (ver `DEFAULT_MODIFIERS` en `challengeManager.js`). Un patrón de tablero nuevo es otra entrada en `BOARD_PATTERNS`; un tipo de objetivo nuevo (puntuación, combo...) es una entrada en `GOAL_TYPES`.
 
 ---
 
@@ -133,6 +151,11 @@ Scripts clásicos (sin ES modules, para que el juego siga abriéndose con `file:
 - **`SoundEffects`**: `AudioContext` creado en el primer `keydown`; tonos ascendentes por combo, diente de sierra distorsionado para T-Spin y arpegio + acorde para Perfect Clear.
 - **`VisualEffects`**: `showText` (clases `fade-up`, `shake`, `gold-glow`, `tspin`, `combo`) sobre la capa `#fx-layer` y `shake` sobre `#board-wrap`. Los estilos están en la sección `Efectos` de `style.css` y respetan `prefers-reduced-motion`.
 
+### 5. `challenges.js`, `challengeManager.js`
+
+- **`challenges.js`**: solo datos (`CHALLENGES`, `BOARD_PATTERNS`).
+- **`ChallengeManager`** (puro, sin DOM): guarda el desafío activo, su estado (`running` / `won` / `lost`), el tiempo y las estadísticas. `game.js` le pasa el `dt` del bucle (`update`) y el resultado de cada pieza fijada (`recordTurn`, con las líneas que devuelve `clearLines`), y consulta `modifiers`. Sin desafío activo, `modifiers` devuelve `DEFAULT_MODIFIERS`, así que el clásico nunca hereda configuración. No usa timers: pausa y game over congelan el reloj porque cancelan el bucle.
+
 ### Flujo del juego
 
 ```
@@ -175,6 +198,8 @@ Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara
 ├── style.css       # Estilos del juego (dark theme) y efectos
 ├── game.js         # Lógica del Tetris (tablero, piezas, bucle, input)
 ├── scoreManager.js # Puntaje: combos, T-Spin, B2B, Perfect Clear
+├── challenges.js   # Datos del Modo Desafío (desafíos y patrones de tablero)
+├── challengeManager.js # Lógica del Modo Desafío (estado, tiempo, modificadores)
 ├── soundEffects.js # Sonidos procedurales (Web Audio API)
 ├── visualEffects.js# Textos flotantes y screen shake
 └── README.md
