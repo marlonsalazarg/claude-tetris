@@ -4,22 +4,9 @@ const COLS = 10;
 const ROWS = 20;
 const BLOCK = 30;
 
-const COLORS = [
-  null,
-  '#4dd0e1', // I - cyan
-  '#ffd54f', // O - yellow
-  '#ba68c8', // T - purple
-  '#81c784', // S - green
-  '#e57373', // Z - red
-  '#7ba7f0', // J - pale blue
-  '#ffb74d', // L - orange
-  '#b0bec5', // N - nut (tuerca) steel gray
-  '#f06292', // + - pink
-  '#4db6ac', // U - teal
-  '#a1887f', // Y - brown
-  '#fff176', // 1x1 - single, light yellow
-  '#607d8b', // basura - slate gray
-];
+// Paleta activa: la define la skin elegida (skins.js); mismos índices que PIECES
+let COLORS = SKINS[DEFAULT_SKIN].colors;
+let skin = SKINS[DEFAULT_SKIN];
 
 const PIECES = [
   null,
@@ -65,6 +52,7 @@ const chEls = Object.fromEntries(
     .map(k => [k, document.getElementById(`ch-${k}`)])
 );
 const themeToggle = document.getElementById('theme-toggle');
+const skinSelect = document.getElementById('skin-select');
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, rewardPending, lastActionWasRotation;
 
@@ -88,6 +76,32 @@ function setTheme(theme) {
   themeToggle.textContent = light ? '☀️' : '🌙';
   themeToggle.setAttribute('aria-pressed', String(light));
   themeToggle.setAttribute('aria-label', light ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');
+  // En pausa/game over el loop está cancelado: repintar manualmente
+  if (board && next) {
+    draw();
+    drawNext();
+  }
+}
+
+function loadSkin() {
+  try {
+    const saved = localStorage.getItem(SKIN_STORAGE_KEY);
+    if (Object.prototype.hasOwnProperty.call(SKINS, saved)) return saved;
+  } catch (e) { /* localStorage no disponible */ }
+  return DEFAULT_SKIN;
+}
+
+function setSkin(id, { save = true } = {}) {
+  if (!Object.prototype.hasOwnProperty.call(SKINS, id)) id = DEFAULT_SKIN;
+  skin = SKINS[id];
+  COLORS = skin.colors;
+  document.documentElement.dataset.skin = id;
+  skinSelect.value = id;
+  // Fondo propio de la skin (null = el de CSS según el tema claro/oscuro)
+  canvas.style.background = nextCanvas.style.background = skin.background || '';
+  if (save) {
+    try { localStorage.setItem(SKIN_STORAGE_KEY, id); } catch (e) { /* ignorar */ }
+  }
   // En pausa/game over el loop está cancelado: repintar manualmente
   if (board && next) {
     draw();
@@ -282,18 +296,11 @@ function updateHUD() {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
-  context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = cssVar('--block-highlight');
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
-  context.globalAlpha = 1;
+  skin.drawBlock(context, x, y, colorIndex, size, alpha);
 }
 
 function drawGrid() {
-  ctx.strokeStyle = cssVar('--grid');
+  ctx.strokeStyle = skin.grid || cssVar('--grid');
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -517,10 +524,10 @@ function init() {
 
 document.addEventListener('keydown', e => {
   sfx.unlock(); // el AudioContext solo puede iniciarse tras un gesto del usuario
-  if (e.target === modeSelect) {
+  if (e.target === modeSelect || e.target === skinSelect) {
     // Enter/Space abren el desplegable; cualquier otra tecla devuelve el control al juego
     if (e.code === 'Enter' || e.code === 'Space') return;
-    modeSelect.blur();
+    e.target.blur();
     if (e.code.startsWith('Arrow')) e.preventDefault();
   }
   if (e.code === 'KeyP') { togglePause(); return; }
@@ -579,6 +586,13 @@ themeToggle.addEventListener('click', () => {
   themeToggle.blur(); // evita que Space/Enter reactiven el botón durante el juego
 });
 
+for (const [id, def] of Object.entries(SKINS)) skinSelect.add(new Option(def.name, id));
+skinSelect.addEventListener('change', () => {
+  setSkin(skinSelect.value);
+  skinSelect.blur(); // evita que las flechas sigan cambiando la skin durante el juego
+});
+
 setTheme('dark');
+setSkin(loadSkin(), { save: false });
 
 init();
