@@ -89,6 +89,28 @@
         <button id="exit-btn" class="secondary" type="button" hidden>Salir del desafío</button>
       </div>
     </div>
+
+    <div id="pause-menu" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pm-title">
+      <div class="overlay-box pause-box">
+        <p id="pm-title">PAUSA</p>
+        <button id="pm-resume" type="button">Reanudar</button>
+        <button id="pm-restart" type="button">Reiniciar</button>
+        <button id="pm-controls-btn" class="secondary" type="button" aria-expanded="false" aria-controls="pm-controls">Ver controles</button>
+        <ul id="pm-controls" class="pm-controls" hidden>
+          <li><kbd>←</kbd><kbd>→</kbd> mover</li>
+          <li><kbd>↑</kbd><kbd>X</kbd> rotar</li>
+          <li><kbd>Z</kbd> rotar ↺</li>
+          <li><kbd>↓</kbd> bajar</li>
+          <li><kbd>Space</kbd> caída</li>
+          <li><kbd>P</kbd><kbd>Esc</kbd> pausa</li>
+        </ul>
+        <div class="pm-level">
+          <label for="pm-level">Nivel inicial</label>
+          <select id="pm-level"></select>
+          <span class="pm-hint">Se aplica a la próxima partida (modo clásico)</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="scoreManager.js"></script>
@@ -96,6 +118,7 @@
   <script src="challengeManager.js"></script>
   <script src="soundEffects.js"></script>
   <script src="visualEffects.js"></script>
+  <script src="pauseMenu.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

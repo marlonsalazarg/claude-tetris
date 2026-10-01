@@ -417,3 +417,78 @@ kbd {
   color: var(--text);
   border-color: var(--accent);
 }
+
+/* ---- Menú de pausa ---- */
+#pm-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--accent);
+}
+
+.pause-box {
+  min-width: 220px;
+}
+
+.pause-box button {
+  width: 100%;
+}
+
+.pm-controls {
+  list-style: none;
+  margin: 0;
+  padding: 10px 14px;
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--canvas-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pm-controls[hidden] {
+  display: none;
+}
+
+.pm-controls kbd {
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  color: var(--kbd-text);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-right: 4px;
+  font-size: 12px;
+}
+
+.pm-level {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.pm-level label {
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+.pm-level select {
+  background: var(--canvas-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+.pm-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
