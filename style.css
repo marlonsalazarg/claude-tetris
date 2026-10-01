@@ -14,6 +14,7 @@
   --kbd-text: #aaa;
   --overlay-bg: rgba(10, 10, 20, 0.75);
   --danger: #e57373;
+  --success: #81c784;
   --shadow: rgba(0, 0, 0, 0.6);
   --block-highlight: rgba(255, 255, 255, 0.12);
   --fx-gold: #ffd54f;
@@ -37,11 +38,16 @@
   --kbd-text: #444;
   --overlay-bg: rgba(242, 244, 250, 0.8);
   --danger: #d32f2f;
+  --success: #2e7d32;
   --shadow: rgba(40, 50, 90, 0.2);
   --block-highlight: rgba(255, 255, 255, 0.35);
   --fx-gold: #c77700;
   --fx-tspin: #7b1fa2;
   --fx-combo: #00838f;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 *, *::before, *::after {
@@ -123,6 +129,79 @@ body {
   border: 1px solid var(--border);
   background: var(--canvas-bg);
   border-radius: 4px;
+}
+
+/* ---- Selector de modo ---- */
+#mode-select {
+  width: 100%;
+  background: var(--canvas-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#mode-select:hover,
+#mode-select:focus-visible {
+  border-color: var(--accent);
+}
+
+/* ---- Panel del Modo Desafío ---- */
+.challenge-panel {
+  width: 200px;
+}
+
+.ch-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.ch-text {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.ch-value {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.ch-value:empty {
+  display: none;
+}
+
+.ch-value.danger {
+  color: var(--danger);
+}
+
+.ch-value.warning {
+  color: var(--danger);
+  animation: ch-pulse 0.5s ease-in-out infinite alternate;
+}
+
+.ch-status {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--accent);
+}
+
+.ch-status[data-status="won"] { color: var(--success); }
+.ch-status[data-status="lost"] { color: var(--danger); }
+
+@keyframes ch-pulse {
+  from { opacity: 1; }
+  to   { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ch-value.warning { animation: none; }
 }
 
 /* ---- Controles ---- */
@@ -297,13 +376,18 @@ kbd {
   color: var(--danger);
 }
 
+.overlay.success #overlay-title {
+  color: var(--success);
+}
+
 #overlay-score {
+  white-space: pre-line;
   font-family: 'Courier New', Courier, monospace;
   font-size: 14px;
   color: var(--accent);
 }
 
-#restart-btn {
+.overlay-box button {
   margin-top: 8px;
   background: var(--accent);
   color: var(--accent-text);
@@ -317,6 +401,19 @@ kbd {
   transition: background 0.15s;
 }
 
-#restart-btn:hover {
+.overlay-box button:hover {
   background: var(--accent-hover);
+}
+
+.overlay-box button.secondary {
+  margin-top: 0;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.overlay-box button.secondary:hover {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--accent);
 }

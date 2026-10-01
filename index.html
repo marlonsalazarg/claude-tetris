@@ -11,6 +11,32 @@
     <h1 class="game-title">TETRIS</h1>
     <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Cambiar a modo claro" aria-pressed="false" title="Cambiar tema">🌙</button>
     <div class="game-container">
+      <aside id="challenge-panel" class="panel challenge-panel" hidden>
+        <div class="panel-section">
+          <span class="label" id="ch-index">DESAFÍO</span>
+          <span class="ch-name" id="ch-name"></span>
+          <span class="ch-text" id="ch-desc"></span>
+        </div>
+        <div class="panel-section">
+          <span class="label">OBJETIVO</span>
+          <span class="ch-text" id="ch-goal"></span>
+        </div>
+        <div class="panel-section">
+          <span class="label">PROGRESO</span>
+          <span class="ch-value" id="ch-progress"></span>
+          <span class="ch-value" id="ch-time"></span>
+          <span class="ch-value" id="ch-garbage"></span>
+        </div>
+        <div class="panel-section">
+          <span class="label">MODIFICADORES</span>
+          <span class="ch-text" id="ch-mods"></span>
+        </div>
+        <div class="panel-section">
+          <span class="label">ESTADO</span>
+          <span class="ch-status" id="ch-status"></span>
+        </div>
+      </aside>
+
       <div id="board-wrap" class="board-wrap">
         <canvas id="board" width="300" height="600"></canvas>
         <div id="fx-layer" class="fx-layer" aria-hidden="true"></div>
@@ -31,6 +57,11 @@
         </div>
 
         <div class="panel-section">
+          <label class="label" for="mode-select">MODO</label>
+          <select id="mode-select"></select>
+        </div>
+
+        <div class="panel-section">
           <span class="label">NEXT</span>
           <canvas id="next-canvas" width="120" height="120"></canvas>
         </div>
@@ -39,7 +70,8 @@
           <span class="label">CONTROLS</span>
           <ul>
             <li><kbd>←</kbd><kbd>→</kbd> mover</li>
-            <li><kbd>↑</kbd> rotar</li>
+            <li><kbd>↑</kbd><kbd>X</kbd> rotar</li>
+            <li><kbd>Z</kbd> rotar ↺</li>
             <li><kbd>↓</kbd> bajar</li>
             <li><kbd>Space</kbd> caída</li>
             <li><kbd>P</kbd> pausa</li>
@@ -52,12 +84,16 @@
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
+        <button id="next-btn" type="button" hidden>Siguiente desafío</button>
         <button id="restart-btn">Reiniciar</button>
+        <button id="exit-btn" class="secondary" type="button" hidden>Salir del desafío</button>
       </div>
     </div>
   </div>
 
   <script src="scoreManager.js"></script>
+  <script src="challenges.js"></script>
+  <script src="challengeManager.js"></script>
   <script src="soundEffects.js"></script>
   <script src="visualEffects.js"></script>
   <script src="game.js"></script>
