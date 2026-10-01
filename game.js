@@ -167,6 +167,13 @@ function dropIntervalFor(lvl) {
   return Math.max(100, 1000 - (lvl - 1) * 90);
 }
 
+// Nivel inicial efectivo: el del desafío, o el elegido en el menú de pausa en modo clásico
+// Se fija en init() para que cambiar el selector a mitad de partida no altere la partida en curso
+let gameStartLevel = 1;
+function effectiveStartLevel() {
+  return gameStartLevel;
+}
+
 function clearLines() {
   let cleared = 0;
   for (let r = ROWS - 1; r >= 0; r--) {
@@ -179,7 +186,7 @@ function clearLines() {
   }
   if (cleared) {
     lines += cleared;
-    level = Math.floor(lines / 10) + challenge.modifiers.startLevel;
+    level = Math.floor(lines / 10) + effectiveStartLevel();
     if (cleared === 4) rewardPending = true;
     dropInterval = dropIntervalFor(level);
     updateHUD();
@@ -461,11 +468,13 @@ function togglePause() {
   if (gameOver) return;
   paused = !paused;
   if (!paused) {
+    PauseMenu.hide();
+    PauseMenu.markResumed();
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    showOverlay('PAUSA', '');
+    PauseMenu.show();
   }
 }
 
@@ -495,7 +504,8 @@ function init() {
   if (mods.boardPattern) applyBoardPattern(mods.boardPattern);
   score = 0;
   lines = 0;
-  level = mods.startLevel;
+  gameStartLevel = challenge.isActive ? mods.startLevel : PauseMenu.startLevel;
+  level = gameStartLevel;
   paused = false;
   gameOver = false;
   rewardPending = false;
@@ -511,6 +521,7 @@ function init() {
   modeSelect.value = challenge.isActive ? challenge.definition.id : '';
   updateChallengePanel();
   overlay.classList.add('hidden');
+  PauseMenu.hide();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
@@ -523,8 +534,12 @@ document.addEventListener('keydown', e => {
     modeSelect.blur();
     if (e.code.startsWith('Arrow')) e.preventDefault();
   }
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    if (!e.repeat && !PauseMenu.shouldIgnoreKey(e)) togglePause();
+    return;
+  }
   if (paused || gameOver) return;
+  if (PauseMenu.shouldIgnoreKey(e)) return; // tecla mantenida desde antes de reanudar
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) {
@@ -556,6 +571,7 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
+PauseMenu.init({ onResume: togglePause, onRestart: init });
 restartBtn.addEventListener('click', init);
 nextBtn.addEventListener('click', () => startMode(challenge.nextId()));
 exitBtn.addEventListener('click', () => startMode(null));
