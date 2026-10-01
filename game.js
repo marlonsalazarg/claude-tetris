@@ -66,6 +66,7 @@ const chEls = Object.fromEntries(
 );
 const themeToggle = document.getElementById('theme-toggle');
 
+let maxCombo = 0;
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, rewardPending, lastActionWasRotation;
 
 // Puntaje avanzado y efectos: viven en sus propios scripts (scoreManager.js, soundEffects.js, visualEffects.js)
@@ -77,6 +78,11 @@ const vfx = new VisualEffects({
 });
 // Modo Desafío (challenges.js + challengeManager.js): sin desafío elegido es el modo clásico
 const challenge = new ChallengeManager(CHALLENGES);
+const highScores = new HighScores();
+const startScreen = document.getElementById('start-screen');
+const startRecords = document.getElementById('start-records');
+const recordsBox = document.getElementById('records-box');
+const playBtn = document.getElementById('play-btn');
 
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -222,6 +228,7 @@ function lockPiece() {
   const cleared = clearLines();
   const result = scoreManager.processTurn({ linesCleared: cleared, level: levelAtLock, tSpin, board });
   score += result.points;
+  maxCombo = Math.max(maxCombo, result.comboCount);
   updateHUD();
   if (challenge.isActive) {
     challenge.recordTurn({ linesCleared: cleared, score, comboCount: result.comboCount });
@@ -363,10 +370,137 @@ function showOverlay(title, detail, { success = false, next = false } = {}) {
   overlayTitle.textContent = title;
   overlayScore.textContent = detail;
   overlay.classList.toggle('success', success);
+  recordsBox.hidden = true;
   restartBtn.textContent = challenge.isActive ? 'Reintentar' : 'Reiniciar';
   nextBtn.hidden = !next;
   exitBtn.hidden = !challenge.isActive;
   overlay.classList.remove('hidden');
+}
+
+// ---- Tabla de records (DOM) ----
+// Todo el texto del jugador se inserta con textContent, nunca con innerHTML
+function el(tag, text, className) {
+  const node = document.createElement(tag);
+  if (text !== undefined) node.textContent = text;
+  if (className) node.className = className;
+  return node;
+}
+
+let resetArmed = false; // confirmación en dos pasos del botón de borrar
+
+function buildRecordsTable(highlightIdx) {
+  const table = el('table', undefined, 'records-table');
+  const head = table.createTHead().insertRow();
+  ['#', 'NOMBRE', 'PUNTOS', 'LÍNEAS'].forEach(t => head.appendChild(el('th', t)));
+  const body = table.createTBody();
+  const all = highScores.getAll();
+  if (!all.length) {
+    const td = el('td', 'Aún no hay records', 'empty');
+    td.colSpan = 4;
+    body.insertRow().appendChild(td);
+  }
+  all.forEach((r, i) => {
+    const tr = body.insertRow();
+    if (i === highlightIdx) tr.className = 'highlight';
+    [i + 1, r.name, r.score.toLocaleString(), r.lines].forEach(v => tr.insertCell().textContent = v);
+  });
+  return table;
+}
+
+function buildResetControl(rerender) {
+  const wrap = el('div', undefined, 'records-form');
+  if (!resetArmed) {
+    const b = el('button', 'Borrar records', 'secondary');
+    b.type = 'button';
+    b.addEventListener('click', () => { b.blur(); resetArmed = true; rerender(); });
+    wrap.appendChild(b);
+  } else {
+    wrap.appendChild(el('span', '¿Borrar todo?', 'rec-msg'));
+    const yes = el('button', 'Sí, borrar', 'danger-btn');
+    yes.type = 'button';
+    yes.addEventListener('click', () => { yes.blur(); resetArmed = false; highScores.reset(); rerender(true); });
+    const no = el('button', 'Cancelar', 'secondary');
+    no.type = 'button';
+    no.addEventListener('click', () => { no.blur(); resetArmed = false; rerender(); });
+    wrap.append(yes, no);
+  }
+  return wrap;
+}
+
+function buildStats() {
+  const stats = el('div', undefined, 'records-stats');
+  for (const [label, value] of [['Mejor combo', highScores.bestCombo], ['Líneas máx.', highScores.maxLines]]) {
+    const s = el('span', `${label}: `);
+    s.appendChild(el('b', String(value)));
+    stats.appendChild(s);
+  }
+  return stats;
+}
+
+function renderStartRecords() {
+  startRecords.replaceChildren(
+    el('span', 'MEJORES PUNTUACIONES', 'rec-title'),
+    buildRecordsTable(-1),
+    buildStats(),
+    buildResetControl(() => renderStartRecords())
+  );
+}
+
+// Estado del game over actual: pending = puntuación aún sin guardar; savedIdx = fila resaltada
+let recordState = null;
+
+function renderGameOverRecords(resetDone) {
+  const { pending, savedIdx } = recordState;
+  const kids = [];
+  if (pending) {
+    kids.push(el('span', '¡Entras en el top 5! Escribe tu nombre', 'rec-msg'));
+    const form = el('div', undefined, 'records-form');
+    const input = el('input');
+    input.type = 'text';
+    input.id = 'record-name';
+    input.maxLength = HighScores.MAX_NAME;
+    input.placeholder = 'Tu nombre';
+    input.autocomplete = 'off';
+    input.value = recordState.name ?? highScores.lastName;
+    input.addEventListener('input', () => { recordState.name = input.value; });
+    const save = el('button', 'Guardar');
+    save.type = 'button';
+    const doSave = () => {
+      save.blur();
+      const idx = highScores.add({ name: input.value, score: pending.score, lines: pending.lines, level: pending.level });
+      recordState = { pending: null, savedIdx: idx };
+      renderGameOverRecords();
+    };
+    save.addEventListener('click', doSave);
+    input.addEventListener('keydown', e => {
+      e.stopPropagation(); // ni Espacio ni Enter deben llegar al juego
+      if (e.key === 'Enter') { e.preventDefault(); doSave(); }
+    });
+    form.append(input, save);
+    kids.push(form);
+  } else if (savedIdx >= 0) {
+    kids.push(el('span', `¡Guardado! Puesto #${savedIdx + 1}`, 'rec-msg'));
+  }
+  kids.push(el('span', 'MEJORES PUNTUACIONES', 'rec-title'), buildRecordsTable(savedIdx ?? -1), buildStats());
+  kids.push(buildResetControl(done => {
+    if (done) { recordState = { pending: null, savedIdx: -1 }; }
+    renderGameOverRecords();
+  }));
+  recordsBox.replaceChildren(...kids);
+  recordsBox.hidden = false;
+  const input = recordsBox.querySelector('input');
+  if (input && !resetDone) input.focus();
+}
+
+// Fin de partida clásica: actualiza estadísticas globales y muestra la tabla
+function recordGameOver() {
+  highScores.updateStats({ combo: maxCombo, lines });
+  resetArmed = false;
+  recordState = {
+    pending: highScores.qualifies(score) ? { score, lines, level } : null,
+    savedIdx: -1,
+  };
+  renderGameOverRecords();
 }
 
 function endGame() {
@@ -375,6 +509,7 @@ function endGame() {
   const scoreText = `Puntuación: ${score.toLocaleString()}`;
   if (!challenge.isActive) {
     showOverlay('GAME OVER', scoreText);
+    recordGameOver();
     return;
   }
   challenge.fail('topout'); // no-op si el desafío ya terminó por objetivo o tiempo
@@ -501,6 +636,8 @@ function init() {
   rewardPending = false;
   lastActionWasRotation = false;
   scoreManager.reset();
+  maxCombo = 0;
+  startScreen.classList.add('hidden'); // cualquier arranque de partida oculta la pantalla de inicio
   vfx.clear();
   dropInterval = dropIntervalFor(level);
   dropAccum = 0;
@@ -516,7 +653,9 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  if (e.target instanceof HTMLInputElement) return; // escribir un nombre no debe mover piezas
   sfx.unlock(); // el AudioContext solo puede iniciarse tras un gesto del usuario
+  if (!startScreen.classList.contains('hidden')) return; // en la pantalla de inicio no hay partida
   if (e.target === modeSelect) {
     // Enter/Space abren el desplegable; cualquier otra tecla devuelve el control al juego
     if (e.code === 'Enter' || e.code === 'Space') return;
@@ -557,6 +696,8 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+restartBtn.addEventListener('click', () => restartBtn.blur());
+playBtn.addEventListener('click', () => { playBtn.blur(); init(); });
 nextBtn.addEventListener('click', () => startMode(challenge.nextId()));
 exitBtn.addEventListener('click', () => startMode(null));
 
@@ -571,7 +712,7 @@ modeSelect.addEventListener('change', () => {
 
 // rAF se detiene con la pestaña oculta: pausar para que el reloj del desafío no salte al volver
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && challenge.isActive && !paused && !gameOver) togglePause();
+  if (document.hidden && startScreen.classList.contains('hidden') && challenge.isActive && !paused && !gameOver) togglePause();
 });
 
 themeToggle.addEventListener('click', () => {
@@ -581,4 +722,10 @@ themeToggle.addEventListener('click', () => {
 
 setTheme('dark');
 
+// Pantalla de inicio: se prepara el primer estado pero la partida no corre hasta pulsar «Jugar»
 init();
+cancelAnimationFrame(animId);
+paused = true;
+overlay.classList.add('hidden');
+renderStartRecords();
+startScreen.classList.remove('hidden');

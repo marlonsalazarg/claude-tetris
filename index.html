@@ -80,17 +80,27 @@
       </aside>
     </div>
 
+    <div id="start-screen" class="overlay">
+      <div class="overlay-box">
+        <p id="start-title">TETRIS</p>
+        <div id="start-records" class="records-box"></div>
+        <button id="play-btn" type="button">Jugar</button>
+      </div>
+    </div>
+
     <div id="overlay" class="overlay hidden">
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
         <button id="next-btn" type="button" hidden>Siguiente desafío</button>
+        <div id="records-box" class="records-box" hidden></div>
         <button id="restart-btn">Reiniciar</button>
         <button id="exit-btn" class="secondary" type="button" hidden>Salir del desafío</button>
       </div>
     </div>
   </div>
 
+  <script src="highScores.js"></script>
   <script src="scoreManager.js"></script>
   <script src="challenges.js"></script>
   <script src="challengeManager.js"></script>
